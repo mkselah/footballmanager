@@ -85,7 +85,7 @@ async function loadData() {
     .order('name', { ascending: true });
   topics = topicRows || [];
   if (!topics.length) activeTopicIdx = 0;
-  else activeTopicIdx = 0; // always show first topic for simplicity
+  else if (activeTopicIdx >= topics.length) activeTopicIdx = 0;
 
   // Load messages for active topic
   await loadMessages();
@@ -116,6 +116,8 @@ async function saveTopic(name) {
   renderAll();
 }
 
+// --- KEY FIX: always re-query topics after rename for fresh data ---
+// This will ensure on reload the name is also correct
 async function renameTopic(idx, name) {
   if (!user || !topics[idx]) return;
   let id = topics[idx].id;
@@ -123,9 +125,10 @@ async function renameTopic(idx, name) {
     .from('topics')
     .update({ name })
     .eq('id', id);
-  if (error) alert(error.message);
-  topics[idx].name = name;
-  renderAll();
+  if (error) return alert(error.message);
+
+  // Instead of local update, reload from DB to refresh names (important for reload as you requested)
+  await loadData();
 }
 
 async function deleteTopic(idx) {
