@@ -9,6 +9,18 @@
 </head>
 <body>
 
+<!-- Add at the top of <body> before #app -->
+<div id="authSection" style="padding:1.5em;">
+  <div id="authForm">
+    <input id="authEmail" type="email" placeholder="Email" />
+    <input id="authPassword" type="password" placeholder="Password" />
+    <button id="loginBtn">Log In</button>
+    <button id="signupBtn">Sign Up</button>
+    <span id="authStatus"></span>
+  </div>
+  <button id="logoutBtn" style="display:none;">Log Out</button>
+</div>
+
   <div id="app" class="main-wrapper">
     <aside class="sidebar">
       <h2>Topics</h2>
@@ -28,6 +40,7 @@
       </form>
     </main>
   </div>
+  <script type="module" src="setup.js"></script>
   <script src="script.js" defer></script>
 </body>
 </html>
