@@ -77,17 +77,24 @@ function updateAuthUI() {
 async function loadData() {
   if (!user) return;
 
-  // Load topics
+  // Save current topic id if exists
+  let oldTopicId = topics[activeTopicIdx]?.id;
+
   let { data: topicRows } = await supabase
     .from('topics')
     .select('*')
     .eq('user_id', user.id)
     .order('name', { ascending: true });
   topics = topicRows || [];
-  if (!topics.length) activeTopicIdx = 0;
-  else activeTopicIdx = 0; // always show first topic for simplicity
 
-  // Load messages for active topic
+  // Try to stay on current topic after reload, if it still exists
+  if (oldTopicId) {
+    let idx = topics.findIndex(t => t.id === oldTopicId);
+    activeTopicIdx = idx >= 0 ? idx : 0;
+  } else {
+    activeTopicIdx = 0;
+  }
+
   await loadMessages();
   renderAll();
 }
@@ -124,8 +131,9 @@ async function renameTopic(idx, name) {
     .update({ name })
     .eq('id', id);
   if (error) alert(error.message);
-  topics[idx].name = name;
-  renderAll();
+  // Instead of updating the local copy and re-rendering,
+  // reload data from Supabase to ensure up-to-date state!
+  await loadData();
 }
 
 async function deleteTopic(idx) {
