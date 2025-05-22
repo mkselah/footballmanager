@@ -8,7 +8,7 @@ export async function handler(event) {
     if (!Array.isArray(messages)) throw new Error("No messages");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Fast and cheap for chat
+      model: "gpt-4.1",
       messages,                // Pass the full thread context for this topic
       temperature: 0.7,
       max_tokens: 1000,
