@@ -6,6 +6,7 @@ const deleteTopicBtn = document.getElementById("deleteTopicBtn");
 const chatWindow = document.getElementById("chatWindow");
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
+const md = window.markdownit({ breaks: true, linkify: true });
 
 let topics = JSON.parse(localStorage.getItem('topics') || '[]');
 let activeTopicIdx = 0;
@@ -31,7 +32,12 @@ function renderChat() {
   topics[activeTopicIdx].messages.forEach(msg => {
     const div = document.createElement('div');
     div.className = msg.role;
-    div.textContent = msg.content;
+    if (msg.role === "assistant") {
+      // Render markdown
+      div.innerHTML = md.render(msg.content);
+    } else {
+      div.textContent = msg.content;
+    }
     chatWindow.appendChild(div);
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
