@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat by Topic</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="app" class="main-wrapper">
+    <aside class="sidebar">
+      <h2>Topics</h2>
+      <ul id="topicList"></ul>
+      <button id="addTopicBtn">+ New Topic</button>
+    </aside>
+    <main class="chat-section">
+      <header>
+        <input id="topicTitle" readonly value="" />
+        <button id="renameTopicBtn">Rename</button>
+        <button id="deleteTopicBtn">🗑️</button>
+      </header>
+      <div id="chatWindow"></div>
+      <form id="chatForm">
+        <input id="userInput" autocomplete="off" placeholder="Type your message..." />
+        <button>Send</button>
+      </form>
+    </main>
+  </div>
+  <script src="script.js" defer></script>
+</body>
+</html>

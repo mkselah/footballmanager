@@ -1,0 +1,30 @@
+body { margin:0; font-family:sans-serif; background:#f5f6fa;}
+.main-wrapper { display: flex; min-height:100vh; }
+.sidebar {
+  width: 32vw; min-width:100px; max-width: 180px; background: #e5eaff;
+  padding: 1em 0.6em; display: flex; flex-direction: column;
+}
+.sidebar ul { list-style:none; margin:0; padding:0; flex:1;}
+.sidebar li { cursor:pointer; padding:8px 12px; margin:2px 0; border-radius:5px;}
+.sidebar li.active, .sidebar li:hover { background: #b5c9ff; }
+.sidebar button { margin-top:1em; }
+.chat-section {
+  flex:1; display:flex; flex-direction:column; background:white;
+  min-width:0; /* fix overflow on mobile */
+}
+.chat-section header {
+  display:flex; gap:0.5em; align-items:center; padding:0.5em 1em; border-bottom: 1px solid #ddd;
+}
+#chatWindow {
+  flex:1; overflow-y:auto; padding:1em; display:flex; flex-direction:column;
+  gap:12px;
+}
+.user { align-self: flex-end; background:#d0edb8; padding:0.7em; border-radius:10px 12px 3px 12px;}
+.assistant { align-self: flex-start; background:#e6e4fa; padding:0.7em; border-radius:12px 10px 12px 3px;}
+.system { color:#888; text-align:center;}
+#chatForm {
+  display:flex; gap:7px; border-top:1px solid #e6e6ee; padding:0.6em;
+  background:#f8f9fa;
+}
+#userInput { flex:1; font-size:1.1em; border-radius:6px; border:1px solid #ccc; padding:0.6em;}
+#userInput:focus { outline-color:#749cff; }
