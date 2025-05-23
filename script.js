@@ -1,29 +1,46 @@
 import { supabase } from "./setup.js";
 
-const topicListEl = document.getElementById("topicList");
+const topicDropdown = document.getElementById("topicDropdown");
 const addTopicBtn = document.getElementById("addTopicBtn");
-const topicTitleInput = document.getElementById("topicTitle");
 const renameTopicBtn = document.getElementById("renameTopicBtn");
 const deleteTopicBtn = document.getElementById("deleteTopicBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const logoutBtn2 = document.getElementById("logoutBtn2");
+
 const chatWindow = document.getElementById("chatWindow");
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 
-// Auth elements
 const authSection = document.getElementById("authSection");
 const authEmail = document.getElementById("authEmail");
 const authPassword = document.getElementById("authPassword");
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const authStatus = document.getElementById("authStatus");
-const logoutBtn = document.getElementById("logoutBtn");
 
 let topics = [];
 let messages = [];
 let activeTopicIdx = 0;
-let user = null; // Supabase user object
+let user = null;
 
+// =======================
 // AUTH LOGIC
+// =======================
+function updateAuthUI() {
+  if (user) {
+    authSection.style.display = "block";
+    document.getElementById("app").style.display = "";
+    logoutBtn.style.display = "inline";
+    logoutBtn2.style.display = "inline";
+    authForm.style.display = "none";
+  } else {
+    authSection.style.display = "block";
+    authForm.style.display = "";
+    logoutBtn.style.display = "none";
+    logoutBtn2.style.display = "none";
+    document.getElementById("app").style.display = "none";
+  }
+}
 loginBtn.onclick = async () => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: authEmail.value,
@@ -35,8 +52,8 @@ loginBtn.onclick = async () => {
   }
   user = data.user;
   loadData();
+  updateAuthUI();
 };
-
 signupBtn.onclick = async () => {
   const { data, error } = await supabase.auth.signUp({
     email: authEmail.value,
@@ -48,9 +65,9 @@ signupBtn.onclick = async () => {
   }
   user = data.user;
   authStatus.textContent = "Check your email to confirm!";
+  updateAuthUI();
 };
-
-logoutBtn.onclick = async () => {
+logoutBtn.onclick = logoutBtn2.onclick = async () => {
   await supabase.auth.signOut();
   user = null;
   topics = [];
@@ -59,25 +76,11 @@ logoutBtn.onclick = async () => {
   updateAuthUI();
 };
 
-function updateAuthUI() {
-  if (user) {
-    authSection.style.display = "block";
-    authForm.style.display = "none";
-    logoutBtn.style.display = "inline";
-    document.getElementById("app").style.display = "";
-  } else {
-    authSection.style.display = "block";
-    authForm.style.display = "";
-    logoutBtn.style.display = "none";
-    document.getElementById("app").style.display = "none";
-  }
-}
-
-// TOPICS/MESSAGES SYNC FROM/TO SUPABASE
+// =======================
+// TOPICS/MESSAGES SYNC
+// =======================
 async function loadData() {
   if (!user) return;
-
-  // Load topics
   let { data: topicRows } = await supabase
     .from('topics')
     .select('*')
@@ -86,8 +89,6 @@ async function loadData() {
   topics = topicRows || [];
   if (!topics.length) activeTopicIdx = 0;
   else if (activeTopicIdx >= topics.length) activeTopicIdx = 0;
-
-  // Load messages for active topic
   await loadMessages();
   renderAll();
 }
@@ -104,7 +105,6 @@ async function loadMessages() {
 
 async function saveTopic(name) {
   if (!user) return;
-  // Insert into topics table
   let { data, error } = await supabase
     .from('topics')
     .insert({ name, user_id: user.id })
@@ -116,8 +116,6 @@ async function saveTopic(name) {
   renderAll();
 }
 
-// --- KEY FIX: always re-query topics after rename for fresh data ---
-// This will ensure on reload the name is also correct
 async function renameTopic(idx, name) {
   if (!user || !topics[idx]) return;
   let id = topics[idx].id;
@@ -125,10 +123,9 @@ async function renameTopic(idx, name) {
     .from('topics')
     .update({ name })
     .eq('id', id);
-  if (error) return alert(error.message);
-
-  // Instead of local update, reload from DB to refresh names (important for reload as you requested)
-  await loadData();
+  if (error) alert(error.message);
+  topics[idx].name = name;
+  renderAll();
 }
 
 async function deleteTopic(idx) {
@@ -136,7 +133,7 @@ async function deleteTopic(idx) {
   let topicId = topics[idx].id;
   await supabase.from('messages').delete().eq('topic_id', topicId);
   await supabase.from('topics').delete().eq('id', topicId);
-  topics.splice(idx, 1);
+  topics.splice(idx,1);
   if (activeTopicIdx >= topics.length) activeTopicIdx = topics.length - 1;
   await loadMessages();
   renderAll();
@@ -144,7 +141,7 @@ async function deleteTopic(idx) {
 
 async function addMessage(role, content) {
   if (!user || !topics[activeTopicIdx]) return;
-  let { data, error } = await supabase
+  let { error } = await supabase
     .from('messages')
     .insert({
       topic_id: topics[activeTopicIdx].id,
@@ -156,45 +153,32 @@ async function addMessage(role, content) {
   renderAll();
 }
 
-
-// --------- UI RENDERING ---------
-function renderTopics() {
-  topicListEl.innerHTML = '';
+// =======================
+// UI RENDERING
+// =======================
+function renderTopicsDropdown() {
+  topicDropdown.innerHTML = '';
   topics.forEach((t, idx) => {
-    const li = document.createElement('li');
-    li.textContent = t.name;
-    if (idx === activeTopicIdx) li.className = 'active';
-    li.onclick = async () => {
-      activeTopicIdx = idx;
-      await loadMessages();
-      renderAll();
-    };
-    topicListEl.appendChild(li);
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = t.name;
+    topicDropdown.appendChild(opt);
   });
+  topicDropdown.value = activeTopicIdx;
+  // Hide rename/delete if no topics
+  renameTopicBtn.disabled = deleteTopicBtn.disabled = topics.length === 0;
+  if(topics[activeTopicIdx]) {
+    document.getElementById('currentTopicLabel').textContent = "  (" + topics[activeTopicIdx].name + ")";
+  } else {
+    document.getElementById('currentTopicLabel').textContent = '';
+  }
 }
+topicDropdown.onchange = async function () {
+  activeTopicIdx = parseInt(this.value);
+  await loadMessages();
+  renderAll();
+};
 
-function renderChat() {
-  chatWindow.innerHTML = '';
-  if (!topics[activeTopicIdx]) return;
-  messages.forEach(msg => {
-    const div = document.createElement('div');
-    div.className = msg.role;
-    // AI styling: render Markdown (basic), or at least <br> for newlines
-    if(msg.role === "assistant") {
-      div.innerHTML = msg.content.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
-    } else {
-      div.textContent = msg.content;
-    }
-    chatWindow.appendChild(div);
-  });
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-  topicTitleInput.value = topics[activeTopicIdx]?.name || '';
-}
-
-function renderAll() {
-  renderTopics();
-  renderChat();
-}
 addTopicBtn.onclick = async () => {
   const name = prompt("Topic name?");
   if (name) await saveTopic(name);
@@ -209,6 +193,46 @@ deleteTopicBtn.onclick = async () => {
   if (confirm("Delete this topic?")) await deleteTopic(activeTopicIdx);
 };
 
+// Single chat area
+function renderChat() {
+  chatWindow.innerHTML = '';
+  if (!topics[activeTopicIdx]) return;
+  messages.forEach(msg => {
+    const div = document.createElement('div');
+    div.className = msg.role;
+    if (msg.role === "assistant") {
+      // Use Markdown rendering for assistant, fallback to simple newline breaks
+      if (window.markdownit) {
+        div.innerHTML = window.markdownit().render(msg.content);
+      } else {
+        div.innerHTML = msg.content.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
+      }
+    } else {
+      div.textContent = msg.content;
+    }
+    chatWindow.appendChild(div);
+  });
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function renderAll() {
+  renderTopicsDropdown();
+  renderChat();
+  autoGrow(userInput); // When switching topic, ensure input is right size
+  // Set focus to textarea for quick typing
+  if (user) userInput.focus();
+}
+
+// ===== Textarea Auto-expanding =====
+function autoGrow(textarea) {
+  textarea.style.height = "auto";
+  textarea.style.height = (textarea.scrollHeight) + "px";
+}
+userInput.addEventListener("input", function() {
+  autoGrow(this);
+});
+
+// ===== Chat Submit =====
 chatForm.onsubmit = async (e) => {
   e.preventDefault();
   const text = userInput.value.trim();
@@ -216,12 +240,13 @@ chatForm.onsubmit = async (e) => {
   if (!topics[activeTopicIdx]) return;
   await addMessage("user", text);
   userInput.value = '';
+  autoGrow(userInput);
   chatWindow.innerHTML += "<div class='system'>Thinking…</div>";
   chatWindow.scrollTop = chatWindow.scrollHeight;
+
   // Build context messages
   const contextMessages = messages.concat([{ role: "user", content: text }]);
-
-  // Call Netlify LLM function
+  // Call Netlify function
   const resp = await fetch("/.netlify/functions/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -235,7 +260,7 @@ chatForm.onsubmit = async (e) => {
   }
 };
 
-// ---------- INIT: check auth ----------
+// ==== INIT ===
 window.onload = async () => {
   let { data: { user: u }} = await supabase.auth.getUser();
   user = u;

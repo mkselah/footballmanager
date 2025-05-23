@@ -8,34 +8,36 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
 </head>
 <body>
-
-<!-- Add at the top of <body> before #app -->
-<div id="authSection" style="padding:1.5em;">
-  <div id="authForm">
-    <input id="authEmail" type="email" placeholder="Email" />
-    <input id="authPassword" type="password" placeholder="Password" />
-    <button id="loginBtn">Log In</button>
-    <button id="signupBtn">Sign Up</button>
-    <span id="authStatus"></span>
+  <!-- Top Auth Bar -->
+  <div id="authSection" style="padding:1.5em;">
+    <div id="authForm">
+      <input id="authEmail" type="email" placeholder="Email" />
+      <input id="authPassword" type="password" placeholder="Password" />
+      <button id="loginBtn">Log In</button>
+      <button id="signupBtn">Sign Up</button>
+      <span id="authStatus"></span>
+    </div>
+    <button id="logoutBtn" style="display:none;">Log Out</button>
   </div>
-  <button id="logoutBtn" style="display:none;">Log Out</button>
-</div>
 
+  <!-- App Layout -->
   <div id="app" class="main-wrapper">
-    <aside class="sidebar">
-      <h2>Topics</h2>
-      <ul id="topicList"></ul>
-      <button id="addTopicBtn">+ New Topic</button>
-    </aside>
+
+    <!-- Top Bar: Topics Dropdown and Actions -->
+    <div id="topbar">
+      <select id="topicDropdown"></select>
+      <button id="addTopicBtn" title="New topic">+</button>
+      <button id="renameTopicBtn" title="Rename topic">📝</button>
+      <button id="deleteTopicBtn" title="Delete topic">🗑️</button>
+      <span id="currentTopicLabel"></span>
+      <span style="flex:1"></span>
+      <button id="logoutBtn2" style="display:none;">Log Out</button>
+    </div>
+
     <main class="chat-section">
-      <header>
-        <input id="topicTitle" readonly value="" />
-        <button id="renameTopicBtn">Rename</button>
-        <button id="deleteTopicBtn">🗑️</button>
-      </header>
       <div id="chatWindow"></div>
       <form id="chatForm">
-        <input id="userInput" autocomplete="off" placeholder="Type your message..." />
+        <textarea id="userInput" autocomplete="off" placeholder="Type your message..." rows="1"></textarea>
         <button>Send</button>
       </form>
     </main>
