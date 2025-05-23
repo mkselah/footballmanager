@@ -160,3 +160,26 @@ body {
   #chatWindow { padding: 0.7em 0.2em; }
   #userInput { font-size: 1em; }
 }
+
+/* Message row flexbox (add after .system for clarity) */
+.message-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3em;
+  position: relative;
+}
+
+/* Make delete button less visually heavy */
+.msg-delete-btn {
+  color: #b91c1c;
+  font-size: 1em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.18s;
+}
+.msg-delete-btn:hover {
+  opacity: 1;
+  color: #ff0000;
+}

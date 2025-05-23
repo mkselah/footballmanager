@@ -16,7 +16,7 @@ const authPassword = document.getElementById("authPassword");
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const authStatus = document.getElementById("authStatus");
-const authForm = document.getElementById("authForm"); // Added missing line
+const authForm = document.getElementById("authForm");
 
 let topics = [];
 let messages = [];
@@ -28,7 +28,7 @@ let user = null;
 // =======================
 function updateAuthUI() {
   if (user) {
-    authSection.style.display = "none";         // <--- Hide the whole top area!
+    authSection.style.display = "none";
     document.getElementById("app").style.display = "";
     logoutBtn.style.display = "inline";
   } else {
@@ -136,6 +136,21 @@ async function deleteTopic(idx) {
   renderAll();
 }
 
+// === NEW: Delete a single message ===
+async function deleteMessage(msgId) {
+  if (!user || !topics[activeTopicIdx]) return;
+  if (!confirm("Delete this message?")) return;
+  let { error } = await supabase
+    .from('messages')
+    .delete()
+    .eq('id', msgId)
+    .eq('topic_id', topics[activeTopicIdx].id);
+  if (error) alert(error.message);
+  await loadMessages();
+  renderAll();
+}
+
+// Add message
 async function addMessage(role, content) {
   if (!user || !topics[activeTopicIdx]) return;
   let { error } = await supabase
@@ -190,15 +205,22 @@ deleteTopicBtn.onclick = async () => {
   if (confirm("Delete this topic?")) await deleteTopic(activeTopicIdx);
 };
 
-// Single chat area
+// === MODIFIED: Chat area w/ delete message support ===
 function renderChat() {
   chatWindow.innerHTML = '';
   if (!topics[activeTopicIdx]) return;
   messages.forEach(msg => {
     const div = document.createElement('div');
     div.className = msg.role;
+
+    // === Add .message-container so the 🗑️ button can float right (CSS not shown!) ===
+    const container = document.createElement('div');
+    container.className = "message-container";
+    container.style.display = 'flex';
+    container.style.alignItems = 'flex-start';
+
     if (msg.role === "assistant") {
-      // Use Markdown rendering for assistant, fallback to simple newline breaks
+      // Use Markdown rendering for assistant
       if (window.markdownit) {
         div.innerHTML = window.markdownit().render(msg.content);
       } else {
@@ -207,7 +229,29 @@ function renderChat() {
     } else {
       div.textContent = msg.content;
     }
-    chatWindow.appendChild(div);
+
+    // Show a delete button for all messages - you may change to only user/assistant if you want
+    const delBtn = document.createElement('button');
+    delBtn.textContent = "🗑️";
+    delBtn.title = "Delete this message";
+    delBtn.className = "msg-delete-btn";
+    // small, inline, soft button
+    delBtn.style.marginLeft = "8px";
+    delBtn.style.fontSize = "1em";
+    delBtn.style.background = "none";
+    delBtn.style.border = "none";
+    delBtn.style.cursor = "pointer";
+    delBtn.style.opacity = "0.6";
+    delBtn.style.transition = "opacity 0.2s";
+    delBtn.onmouseenter = () => delBtn.style.opacity = "1";
+    delBtn.onmouseleave = () => delBtn.style.opacity = "0.6";
+    delBtn.onclick = () => deleteMessage(msg.id);
+
+    // Optional: Only show delete for your own user messages OR all? For solo use, show always.
+    container.appendChild(div);
+    container.appendChild(delBtn);
+
+    chatWindow.appendChild(container);
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
@@ -215,8 +259,7 @@ function renderChat() {
 function renderAll() {
   renderTopicsDropdown();
   renderChat();
-  autoGrow(userInput); // When switching topic, ensure input is right size
-  // Set focus to textarea for quick typing
+  autoGrow(userInput); // Ensure input box size is right for quick typing
   if (user) userInput.focus();
 }
 
