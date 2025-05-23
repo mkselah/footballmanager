@@ -28,11 +28,9 @@ let user = null;
 // =======================
 function updateAuthUI() {
   if (user) {
-    authSection.style.display = "block";
+    authSection.style.display = "none";         // <--- Hide the whole top area!
     document.getElementById("app").style.display = "";
     logoutBtn.style.display = "inline";
-    // Hide the login/signup form
-    authForm.style.display = "none";
   } else {
     authSection.style.display = "block";
     authForm.style.display = "";
