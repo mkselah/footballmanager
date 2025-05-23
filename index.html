@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
 </head>
 <body>
-  <!-- Top Auth Bar -->
+  <!-- Top Auth Bar: only login/signup on this line -->
   <div id="authSection" style="padding:1.5em;">
     <div id="authForm">
       <input id="authEmail" type="email" placeholder="Email" />
@@ -17,13 +17,13 @@
       <button id="signupBtn">Sign Up</button>
       <span id="authStatus"></span>
     </div>
-    <button id="logoutBtn" style="display:none;">Log Out</button>
+    <!-- REMOVE: <button id="logoutBtn" style="display:none;">Log Out</button> -->
   </div>
 
   <!-- App Layout -->
   <div id="app" class="main-wrapper">
 
-    <!-- Top Bar: Topics Dropdown and Actions -->
+    <!-- Top Bar: sticky, shows topics & all actions, including logout -->
     <div id="topbar">
       <select id="topicDropdown"></select>
       <button id="addTopicBtn" title="New topic">+</button>
@@ -31,7 +31,7 @@
       <button id="deleteTopicBtn" title="Delete topic">🗑️</button>
       <span id="currentTopicLabel"></span>
       <span style="flex:1"></span>
-      <button id="logoutBtn2" style="display:none;">Log Out</button>
+      <button id="logoutBtn" style="display:none; margin-left:auto;">Log Out</button>
     </div>
 
     <main class="chat-section">

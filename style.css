@@ -15,14 +15,7 @@ body {
 }
 
 #authSection {
-  position: sticky;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  background: #e5eaff;
-  padding: 1em 0.8em;
-  border-bottom: 1px solid #b5c9ff;
+  padding: 0.6em 1em; /* same as #topbar */
 }
 
 #authForm input, #authForm button {

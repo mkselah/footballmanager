@@ -4,8 +4,7 @@ const topicDropdown = document.getElementById("topicDropdown");
 const addTopicBtn = document.getElementById("addTopicBtn");
 const renameTopicBtn = document.getElementById("renameTopicBtn");
 const deleteTopicBtn = document.getElementById("deleteTopicBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const logoutBtn2 = document.getElementById("logoutBtn2");
+const logoutBtn = document.getElementById("logoutBtn"); // Only one logoutBtn now!
 
 const chatWindow = document.getElementById("chatWindow");
 const chatForm = document.getElementById("chatForm");
@@ -17,6 +16,7 @@ const authPassword = document.getElementById("authPassword");
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const authStatus = document.getElementById("authStatus");
+const authForm = document.getElementById("authForm"); // Added missing line
 
 let topics = [];
 let messages = [];
@@ -31,13 +31,12 @@ function updateAuthUI() {
     authSection.style.display = "block";
     document.getElementById("app").style.display = "";
     logoutBtn.style.display = "inline";
-    logoutBtn2.style.display = "inline";
+    // Hide the login/signup form
     authForm.style.display = "none";
   } else {
     authSection.style.display = "block";
     authForm.style.display = "";
     logoutBtn.style.display = "none";
-    logoutBtn2.style.display = "none";
     document.getElementById("app").style.display = "none";
   }
 }
@@ -67,7 +66,7 @@ signupBtn.onclick = async () => {
   authStatus.textContent = "Check your email to confirm!";
   updateAuthUI();
 };
-logoutBtn.onclick = logoutBtn2.onclick = async () => {
+logoutBtn.onclick = async () => {
   await supabase.auth.signOut();
   user = null;
   topics = [];
