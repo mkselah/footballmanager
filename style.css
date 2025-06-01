@@ -183,3 +183,20 @@ body {
   opacity: 1;
   color: #ff0000;
 }
+
+.suggestions-box {
+  margin-top: 4px;
+  margin-left: 12px;
+}
+.suggestion-btn {
+  font-size: 0.95em;
+  padding: 0.16em 0.5em;
+  border-radius: 8px;
+  border: 1px solid #9abefb;
+  background: #e8f2ff;
+  cursor: pointer;
+  transition: background 0.17s;
+}
+.suggestion-btn:hover {
+  background: #d2e8fd;
+}
