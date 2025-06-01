@@ -23,6 +23,9 @@ let messages = [];
 let activeTopicIdx = 0;
 let user = null;
 
+// New: To hold suggestions for last assistant message (index = message #)
+let lastSuggestions = {}; // { messageId: [suggestion1, suggestion2, suggestion3] }
+
 // =======================
 // AUTH LOGIC
 // =======================
@@ -69,6 +72,7 @@ logoutBtn.onclick = async () => {
   user = null;
   topics = [];
   messages = [];
+  lastSuggestions = {};
   renderAll();
   updateAuthUI();
 };
@@ -209,7 +213,13 @@ deleteTopicBtn.onclick = async () => {
 function renderChat() {
   chatWindow.innerHTML = '';
   if (!topics[activeTopicIdx]) return;
-  messages.forEach(msg => {
+  // For suggestions: find last assistant message and see if we have suggestions for it
+  let lastAssistantIdx = -1;
+  for (let i = messages.length - 1; i >= 0; --i) {
+    if (messages[i].role === "assistant") { lastAssistantIdx = i; break; }
+  }
+
+  messages.forEach((msg, idx) => {
     const div = document.createElement('div');
     div.className = msg.role;
 
@@ -251,16 +261,18 @@ function renderChat() {
 
     chatWindow.appendChild(container);
 
-    // ---- SUGGESTION BUTTONS after assistant message (NEW) ----
-    if (msg.role === "assistant") {
+    // ---- SUGGESTION BUTTONS after [the last assistant message only, and only if we have suggestions] ----
+    if (msg.role === "assistant" && idx === lastAssistantIdx && lastSuggestions && lastSuggestions[msg.id]) {
+      const suggArr = lastSuggestions[msg.id];
       const sugg = document.createElement('div');
       sugg.className = 'suggestions';
       for(let i=0; i<3; ++i) {
         const btn = document.createElement('button');
         btn.className = 'sugg-btn';
         btn.type = 'button';
-        btn.textContent = "";  // Initially blank -- will be populated later
-        // btn.onclick = () => {  }; // No-op for step 1
+        btn.textContent = suggArr[i] || "";
+        btn.disabled = !suggArr[i];
+        btn.onclick = () => sendSuggestion(i, suggArr, msg, idx);
         sugg.appendChild(btn);
       }
       chatWindow.appendChild(sugg);
@@ -268,6 +280,42 @@ function renderChat() {
     // End suggestions
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+// Send suggestion as new user message, and trigger chat as if typed
+async function sendSuggestion(idx, suggArr, assistantMsg, assistantMsgIdx) {
+  const suggestionText = suggArr[idx];
+  if (!suggestionText) return;
+  // Add to db as user message
+  await addMessage("user", suggestionText);
+  userInput.value = '';
+  autoGrow(userInput);
+  chatWindow.innerHTML += "<div class='system'>Thinking…</div>";
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  // Build context messages: all up to and incl current
+  const contextMessages = messages.concat(
+    [{ role: "user", content: suggestionText }]
+  );
+  // Call Netlify function
+  const resp = await fetch("/.netlify/functions/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: contextMessages }),
+  });
+  const json = await resp.json();
+  if (json.reply) {
+    // Add assistant message to DB
+    await addMessage("assistant", json.reply);
+    // Store new suggestions for that message
+    // We'll use the last message's id (will be loaded via addMessage)
+    await loadMessages(); // will update messages with new assistant
+    const lastMsg = messages[messages.length - 1];
+    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
+    renderAll();
+  } else {
+    chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
+  }
 }
 
 function renderAll() {
@@ -309,6 +357,11 @@ chatForm.onsubmit = async (e) => {
   const json = await resp.json();
   if (json.reply) {
     await addMessage("assistant", json.reply);
+    // Save the suggestions with this message ID (but only after re-loading messages to get the new ID)
+    await loadMessages();
+    const lastMsg = messages[messages.length-1];
+    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
+    renderAll();
   } else {
     chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
   }
