@@ -205,7 +205,7 @@ deleteTopicBtn.onclick = async () => {
   if (confirm("Delete this topic?")) await deleteTopic(activeTopicIdx);
 };
 
-// === MODIFIED: Chat area w/ delete message support ===
+// === MODIFIED: Chat area w/ delete message support and suggestion buttons ===
 function renderChat() {
   chatWindow.innerHTML = '';
   if (!topics[activeTopicIdx]) return;
@@ -230,12 +230,11 @@ function renderChat() {
       div.textContent = msg.content;
     }
 
-    // Show a delete button for all messages - you may change to only user/assistant if you want
+    // Delete button (all messages)
     const delBtn = document.createElement('button');
     delBtn.textContent = "🗑️";
     delBtn.title = "Delete this message";
     delBtn.className = "msg-delete-btn";
-    // small, inline, soft button
     delBtn.style.marginLeft = "8px";
     delBtn.style.fontSize = "1em";
     delBtn.style.background = "none";
@@ -247,11 +246,26 @@ function renderChat() {
     delBtn.onmouseleave = () => delBtn.style.opacity = "0.6";
     delBtn.onclick = () => deleteMessage(msg.id);
 
-    // Optional: Only show delete for your own user messages OR all? For solo use, show always.
     container.appendChild(div);
     container.appendChild(delBtn);
 
     chatWindow.appendChild(container);
+
+    // ---- SUGGESTION BUTTONS after assistant message (NEW) ----
+    if (msg.role === "assistant") {
+      const sugg = document.createElement('div');
+      sugg.className = 'suggestions';
+      for(let i=0; i<3; ++i) {
+        const btn = document.createElement('button');
+        btn.className = 'sugg-btn';
+        btn.type = 'button';
+        btn.textContent = "";  // Initially blank -- will be populated later
+        // btn.onclick = () => {  }; // No-op for step 1
+        sugg.appendChild(btn);
+      }
+      chatWindow.appendChild(sugg);
+    }
+    // End suggestions
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
