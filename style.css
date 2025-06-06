@@ -202,3 +202,14 @@ body {
 .sugg-btn:active {
   background: #bed8ff;
 }
+
+.tts-btn {
+  margin-left: 8px;
+  font-size: 1em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.tts-btn:active { opacity: 1; }

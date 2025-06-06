@@ -4,7 +4,7 @@ const topicDropdown = document.getElementById("topicDropdown");
 const addTopicBtn = document.getElementById("addTopicBtn");
 const renameTopicBtn = document.getElementById("renameTopicBtn");
 const deleteTopicBtn = document.getElementById("deleteTopicBtn");
-const logoutBtn = document.getElementById("logoutBtn"); // Only one logoutBtn now!
+const logoutBtn = document.getElementById("logoutBtn");
 
 const chatWindow = document.getElementById("chatWindow");
 const chatForm = document.getElementById("chatForm");
@@ -23,8 +23,8 @@ let messages = [];
 let activeTopicIdx = 0;
 let user = null;
 
-// New: To hold suggestions for last assistant message (index = message #)
-let lastSuggestions = {}; // { messageId: [suggestion1, suggestion2, suggestion3] }
+// ===== MOBILE TTS: preferred language (can be improved later) =====
+let preferredLanguage = "English"; // Default for now; set per-topic or message in future
 
 // =======================
 // AUTH LOGIC
@@ -41,6 +41,7 @@ function updateAuthUI() {
     document.getElementById("app").style.display = "none";
   }
 }
+
 loginBtn.onclick = async () => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: authEmail.value,
@@ -54,6 +55,7 @@ loginBtn.onclick = async () => {
   loadData();
   updateAuthUI();
 };
+
 signupBtn.onclick = async () => {
   const { data, error } = await supabase.auth.signUp({
     email: authEmail.value,
@@ -67,12 +69,12 @@ signupBtn.onclick = async () => {
   authStatus.textContent = "Check your email to confirm!";
   updateAuthUI();
 };
+
 logoutBtn.onclick = async () => {
   await supabase.auth.signOut();
   user = null;
   topics = [];
   messages = [];
-  lastSuggestions = {};
   renderAll();
   updateAuthUI();
 };
@@ -209,21 +211,15 @@ deleteTopicBtn.onclick = async () => {
   if (confirm("Delete this topic?")) await deleteTopic(activeTopicIdx);
 };
 
-// === MODIFIED: Chat area w/ delete message support and suggestion buttons ===
+// === MODIFIED: Chat area w/ delete message support, suggestion buttons, and TTS listen button ===
 function renderChat() {
   chatWindow.innerHTML = '';
   if (!topics[activeTopicIdx]) return;
-  // For suggestions: find last assistant message and see if we have suggestions for it
-  let lastAssistantIdx = -1;
-  for (let i = messages.length - 1; i >= 0; --i) {
-    if (messages[i].role === "assistant") { lastAssistantIdx = i; break; }
-  }
-
   messages.forEach((msg, idx) => {
     const div = document.createElement('div');
     div.className = msg.role;
 
-    // === Add .message-container so the 🗑️ button can float right (CSS not shown!) ===
+    // === Add .message-container so the 🗑️ and 🔊 button can float right ===
     const container = document.createElement('div');
     container.className = "message-container";
     container.style.display = 'flex';
@@ -236,8 +232,32 @@ function renderChat() {
       } else {
         div.innerHTML = msg.content.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
       }
-    } else {
-      div.textContent = msg.content;
+      // --- ADD Listen/Play button, left of 🗑️ ---
+      const ttsBtn = document.createElement('button');
+      ttsBtn.textContent = "🔊";
+      ttsBtn.title = "Listen to this message";
+      ttsBtn.className = "tts-btn";
+      ttsBtn.style.marginLeft = "8px";
+      ttsBtn.style.fontSize = "1em";
+      ttsBtn.style.background = "none";
+      ttsBtn.style.border = "none";
+      ttsBtn.style.cursor = "pointer";
+      ttsBtn.style.opacity = "0.8";
+      ttsBtn.style.transition = "opacity 0.2s";
+      ttsBtn.onmouseenter = () => ttsBtn.style.opacity = "1";
+      ttsBtn.onmouseleave = () => ttsBtn.style.opacity = "0.8";
+      ttsBtn.onclick = async () => {
+        ttsBtn.disabled = true;
+        ttsBtn.textContent = "🔄"; // animates with unicode
+        try {
+          await playTTS(msg.content, preferredLanguage);
+        } catch (e) {
+          alert("TTS error: " + (e.message || e));
+        }
+        ttsBtn.textContent = "🔊";
+        ttsBtn.disabled = false;
+      };
+      container.appendChild(ttsBtn);
     }
 
     // Delete button (all messages)
@@ -261,18 +281,15 @@ function renderChat() {
 
     chatWindow.appendChild(container);
 
-    // ---- SUGGESTION BUTTONS after [the last assistant message only, and only if we have suggestions] ----
-    if (msg.role === "assistant" && idx === lastAssistantIdx && lastSuggestions && lastSuggestions[msg.id]) {
-      const suggArr = lastSuggestions[msg.id];
+    // ---- SUGGESTION BUTTONS after assistant message (NEW) ----
+    if (msg.role === "assistant") {
       const sugg = document.createElement('div');
       sugg.className = 'suggestions';
       for(let i=0; i<3; ++i) {
         const btn = document.createElement('button');
         btn.className = 'sugg-btn';
         btn.type = 'button';
-        btn.textContent = suggArr[i] || "";
-        btn.disabled = !suggArr[i];
-        btn.onclick = () => sendSuggestion(i, suggArr, msg, idx);
+        btn.textContent = "";  // Initially blank -- will be populated later
         sugg.appendChild(btn);
       }
       chatWindow.appendChild(sugg);
@@ -282,42 +299,28 @@ function renderChat() {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// Send suggestion as new user message, and trigger chat as if typed
-async function sendSuggestion(idx, suggArr, assistantMsg, assistantMsgIdx) {
-  const suggestionText = suggArr[idx];
-  if (!suggestionText) return;
-  // Add to db as user message
-  await addMessage("user", suggestionText);
-  userInput.value = '';
-  autoGrow(userInput);
-  chatWindow.innerHTML += "<div class='system'>Thinking…</div>";
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-
-  // Build context messages: all up to and incl current
-  const contextMessages = messages.concat(
-    [{ role: "user", content: suggestionText }]
-  );
-  // Call Netlify function
-  const resp = await fetch("/.netlify/functions/chat", {
+// === NEW: Fetch and play TTS audio for given text & language ===
+let ttsAudio = null;
+async function playTTS(text, language) {
+  // Stop previous TTS if playing
+  if (ttsAudio) {
+    ttsAudio.pause();
+    ttsAudio = null;
+  }
+  const resp = await fetch("/.netlify/functions/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages: contextMessages }),
+    body: JSON.stringify({ text, language })
   });
-  const json = await resp.json();
-  if (json.reply) {
-    // Add assistant message to DB
-    await addMessage("assistant", json.reply);
-    // Store new suggestions for that message
-    // We'll use the last message's id (will be loaded via addMessage)
-    await loadMessages(); // will update messages with new assistant
-    const lastMsg = messages[messages.length - 1];
-    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
-    renderAll();
-  } else {
-    chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
-  }
+  if (!resp.ok) throw new Error("TTS HTTP error");
+  const arrayBuffer = await resp.arrayBuffer();
+  const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
+  ttsAudio = new Audio();
+  ttsAudio.src = URL.createObjectURL(blob);
+  ttsAudio.play();
 }
 
+// ======================
 function renderAll() {
   renderTopicsDropdown();
   renderChat();
@@ -357,11 +360,6 @@ chatForm.onsubmit = async (e) => {
   const json = await resp.json();
   if (json.reply) {
     await addMessage("assistant", json.reply);
-    // Save the suggestions with this message ID (but only after re-loading messages to get the new ID)
-    await loadMessages();
-    const lastMsg = messages[messages.length-1];
-    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
-    renderAll();
   } else {
     chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
   }
