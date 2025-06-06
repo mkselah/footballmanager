@@ -366,7 +366,9 @@ function renderAll() {
   renderTopicsDropdown();
   renderChat();
   autoGrow(userInput); // Ensure input box size is right for quick typing
-  if (user) userInput.focus();
+  // ---- CHANGED FROM: if (user) userInput.focus();
+  // Do NOT focus userInput automatically. This prevents unwanted mobile keyboard popup
+  // OLD: if (user) userInput.focus();
 }
 
 // ===== Textarea Auto-expanding =====
@@ -417,4 +419,6 @@ window.onload = async () => {
   user = u;
   updateAuthUI();
   if (user) await loadData();
+  // ---- CHANGED: Do NOT focus here ----
+  // Don't auto-focus userInput on load
 };
