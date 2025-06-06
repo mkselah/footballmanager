@@ -5,10 +5,7 @@ const openai = new OpenAI({
 });
 
 const LANGUAGE_VOICE_MAP = {
-  'English': 'onyx',
-  'Turkce' : 'alloy',
-  'Dansk': 'nova',
-  'Norsk': 'nova'
+  'English': 'onyx'
 };
 
 const MAX_TTS_CHARS = 3400;
@@ -32,7 +29,7 @@ export async function handler(event, context) {
       voice,
       input: text,
       response_format: "mp3",
-      speed: 0.9
+      speed: 1
     });
 
     const buffer = Buffer.from(await response.arrayBuffer());
