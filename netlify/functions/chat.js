@@ -2,6 +2,13 @@ import { OpenAI } from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const ANTI_BOILERPLATE = `
+Do not repeat or rephrase the user's prompt in your answers.
+Start your answer directly, no introductions such as "Certainly", "Sure", or similar.
+Do not mention you are an AI or language model.
+Focus on giving helpful, clear, and concise information.
+`;
+
 // Helper: After assistant response, ask for 3 concise next user questions to keep the chat going
 async function getSuggestions(messages) {
   // Work in user/assistant context; give prompt in English for now
@@ -39,10 +46,20 @@ export async function handler(event) {
     const { messages } = JSON.parse(event.body);
     if (!Array.isArray(messages)) throw new Error("No messages");
 
+    // Insert the anti-boilerplate system prompt at the start (after any topic system or before user)
+    let contextMsgs = messages.slice();
+    // Find the index to insert after first system message, or else just at the start
+    let systemIdx = contextMsgs.findIndex(m => m.role === "system");
+    if (systemIdx >= 0) {
+      contextMsgs.splice(systemIdx + 1, 0, { role: "system", content: ANTI_BOILERPLATE });
+    } else {
+      contextMsgs.unshift({ role: "system", content: ANTI_BOILERPLATE });
+    }
+
     // 1. Get assistant reply
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1",
-      messages,
+      messages: contextMsgs,
       temperature: 0.7,
       max_tokens: 1000,
     });
