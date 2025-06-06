@@ -209,7 +209,7 @@ deleteTopicBtn.onclick = async () => {
   if (confirm("Delete this topic?")) await deleteTopic(activeTopicIdx);
 };
 
-// === MODIFIED: Chat area w/ delete message support and suggestion buttons ===
+// === MODIFIED: Chat area w/ delete message support and suggestion buttons and LISTEN BUTTON ===
 function renderChat() {
   chatWindow.innerHTML = '';
   if (!topics[activeTopicIdx]) return;
@@ -223,7 +223,7 @@ function renderChat() {
     const div = document.createElement('div');
     div.className = msg.role;
 
-    // === Add .message-container so the 🗑️ button can float right (CSS not shown!) ===
+    // === Add .message-container so the 🗑️ button (and new listen button) can float right ===
     const container = document.createElement('div');
     container.className = "message-container";
     container.style.display = 'flex';
@@ -257,8 +257,38 @@ function renderChat() {
     delBtn.onclick = () => deleteMessage(msg.id);
 
     container.appendChild(div);
-    container.appendChild(delBtn);
 
+    // ====== LISTEN BUTTON for assistant messages only (TTS) ======
+    if (msg.role === "assistant") {
+      const listenBtn = document.createElement('button');
+      listenBtn.textContent = "🔊";
+      listenBtn.title = "Listen to this message (TTS)";
+      listenBtn.style.marginLeft = "6px";
+      listenBtn.style.fontSize = "1em";
+      listenBtn.style.background = "none";
+      listenBtn.style.border = "none";
+      listenBtn.style.cursor = "pointer";
+      listenBtn.style.opacity = "0.7";
+      listenBtn.style.transition = "opacity 0.2s";
+      listenBtn.onmouseenter = () => listenBtn.style.opacity = "1";
+      listenBtn.onmouseleave = () => listenBtn.style.opacity = "0.7";
+
+      listenBtn.onclick = async () => {
+        listenBtn.disabled = true;
+        listenBtn.textContent = "…";
+        try {
+          await playTTS(msg.content, "English"); // For now always English, you may change
+        } catch (e) {
+          alert("Could not play audio: " + (e.message||e));
+        }
+        listenBtn.textContent = "🔊";
+        listenBtn.disabled = false;
+      };
+      container.appendChild(listenBtn);
+    }
+    // ====== END LISTEN BUTTON ======
+
+    container.appendChild(delBtn);
     chatWindow.appendChild(container);
 
     // ---- SUGGESTION BUTTONS after [the last assistant message only, and only if we have suggestions] ----
@@ -281,6 +311,26 @@ function renderChat() {
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
+
+// ======= Play TTS function: Calls .netlify/functions/tts and plays returned mp3 =======
+async function playTTS(text, language) {
+  // Fetch as binary, convert to blob URL, play
+  const resp = await fetch("/.netlify/functions/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, language })
+  });
+  if (!resp.ok) throw new Error("TTS error: " + resp.statusText);
+  const blob = await resp.blob();
+  const audioUrl = URL.createObjectURL(blob);
+  let audio = new Audio(audioUrl);
+  audio.play();
+  audio.onended = () => {
+    URL.revokeObjectURL(audioUrl);
+    audio = null;
+  };
+}
+// ======= END Play TTS =======
 
 // Send suggestion as new user message, and trigger chat as if typed
 async function sendSuggestion(idx, suggArr, assistantMsg, assistantMsgIdx) {
