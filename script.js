@@ -220,15 +220,11 @@ function renderChat() {
   }
 
   messages.forEach((msg, idx) => {
+    // Create bubble row (no longer flex)
     const div = document.createElement('div');
     div.className = msg.role;
 
-    // === Add .message-container so the 🗑️ button (and new listen button) can float right ===
-    const container = document.createElement('div');
-    container.className = "message-container";
-    container.style.display = 'flex';
-    container.style.alignItems = 'flex-start';
-
+    // --- Message content as before ---
     if (msg.role === "assistant") {
       // Use Markdown rendering for assistant
       if (window.markdownit) {
@@ -240,56 +236,54 @@ function renderChat() {
       div.textContent = msg.content;
     }
 
-    // Delete button (all messages)
-    const delBtn = document.createElement('button');
-    delBtn.textContent = "🗑️";
-    delBtn.title = "Delete this message";
-    delBtn.className = "msg-delete-btn";
-    delBtn.style.marginLeft = "8px";
-    delBtn.style.fontSize = "1em";
-    delBtn.style.background = "none";
-    delBtn.style.border = "none";
-    delBtn.style.cursor = "pointer";
-    delBtn.style.opacity = "0.6";
-    delBtn.style.transition = "opacity 0.2s";
-    delBtn.onmouseenter = () => delBtn.style.opacity = "1";
-    delBtn.onmouseleave = () => delBtn.style.opacity = "0.6";
-    delBtn.onclick = () => deleteMessage(msg.id);
+    chatWindow.appendChild(div);
 
-    container.appendChild(div);
-
-    // ====== LISTEN BUTTON for assistant messages only (TTS) ======
+    // ====== Action row for assistant: Listen/Trash in new row below bubble ======
     if (msg.role === "assistant") {
+      const actionRow = document.createElement('div');
+      actionRow.className = "action-row";
+
+      // Listen Button
       const listenBtn = document.createElement('button');
       listenBtn.textContent = "🔊";
       listenBtn.title = "Listen to this message (TTS)";
-      listenBtn.style.marginLeft = "6px";
-      listenBtn.style.fontSize = "1em";
-      listenBtn.style.background = "none";
-      listenBtn.style.border = "none";
-      listenBtn.style.cursor = "pointer";
-      listenBtn.style.opacity = "0.7";
-      listenBtn.style.transition = "opacity 0.2s";
-      listenBtn.onmouseenter = () => listenBtn.style.opacity = "1";
-      listenBtn.onmouseleave = () => listenBtn.style.opacity = "0.7";
-
+      listenBtn.className = "listen-btn";
       listenBtn.onclick = async () => {
         listenBtn.disabled = true;
         listenBtn.textContent = "…";
         try {
-          await playTTS(msg.content, "English"); // For now always English, you may change
+          await playTTS(msg.content, "English"); // Set language as needed
         } catch (e) {
           alert("Could not play audio: " + (e.message||e));
         }
         listenBtn.textContent = "🔊";
         listenBtn.disabled = false;
       };
-      container.appendChild(listenBtn);
-    }
-    // ====== END LISTEN BUTTON ======
+      actionRow.appendChild(listenBtn);
 
-    container.appendChild(delBtn);
-    chatWindow.appendChild(container);
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "🗑️";
+      delBtn.title = "Delete this message";
+      delBtn.className = "msg-delete-btn";
+      delBtn.onclick = () => deleteMessage(msg.id);
+      actionRow.appendChild(delBtn);
+
+      chatWindow.appendChild(actionRow);
+    }
+
+    // ====== If user message, action row is just trash ======
+    if (msg.role === "user") {
+      const actionRow = document.createElement('div');
+      actionRow.className = "action-row";
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "🗑️";
+      delBtn.title = "Delete this message";
+      delBtn.className = "msg-delete-btn";
+      delBtn.onclick = () => deleteMessage(msg.id);
+      actionRow.appendChild(delBtn);
+      chatWindow.appendChild(actionRow);
+    }
 
     // ---- SUGGESTION BUTTONS after [the last assistant message only, and only if we have suggestions] ----
     if (msg.role === "assistant" && idx === lastAssistantIdx && lastSuggestions && lastSuggestions[msg.id]) {
