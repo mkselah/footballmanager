@@ -161,8 +161,8 @@ body {
 
   /* Make chat bubbles nearly full width, with only a little margin for readability and 'edge tap' comfort */
   .user, .assistant {
-    max-width: 99vw;
-    width: 100%;
+    max-width: 96vw;
+    width: 96%;
     margin-left: 2px;
     margin-right: 2px;
     box-sizing: border-box;
