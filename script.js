@@ -26,6 +26,24 @@ let user = null;
 // New: To hold suggestions for last assistant message (index = message #)
 let lastSuggestions = {}; // { messageId: [suggestion1, suggestion2, suggestion3] }
 
+// --- Add to script.js: splits long text into ~1000 char chunks at ".", "!", "?"
+function splitTextIntoChunks(text, charLimit = 1000) {
+  if (text.length <= charLimit) return [text];
+  const sentences = text.match(/[^.!?]+[.!?]+|\s*\S+$/g); // naive sentence split
+  const chunks = [];
+  let current = "";
+  for (const sent of sentences) {
+    if ((current + sent).length > charLimit) {
+      if (current) chunks.push(current);
+      current = sent.trim();
+    } else {
+      current += sent;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 // =======================
 // AUTH LOGIC
 // =======================
@@ -308,21 +326,37 @@ function renderChat() {
 
 // ======= Play TTS function: Calls .netlify/functions/tts and plays returned mp3 =======
 async function playTTS(text, language) {
-  // Fetch as binary, convert to blob URL, play
-  const resp = await fetch("/.netlify/functions/tts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, language })
-  });
-  if (!resp.ok) throw new Error("TTS error: " + resp.statusText);
-  const blob = await resp.blob();
-  const audioUrl = URL.createObjectURL(blob);
-  let audio = new Audio(audioUrl);
-  audio.play();
-  audio.onended = () => {
-    URL.revokeObjectURL(audioUrl);
-    audio = null;
-  };
+  const chunks = splitTextIntoChunks(text, 1000); // ~1 min per chunk
+  let idx = 0;
+
+  async function playChunk(i) {
+    if (!chunks[i]) return;
+    const resp = await fetch("/.netlify/functions/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: chunks[i], language })
+    });
+    if (!resp.ok) throw new Error("TTS error: " + resp.statusText);
+    const blob = await resp.blob();
+    const audioUrl = URL.createObjectURL(blob);
+    let audio = new Audio(audioUrl);
+
+    return new Promise((resolve, reject) => {
+      audio.play();
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        resolve();
+      };
+      audio.onerror = (err) => {
+        URL.revokeObjectURL(audioUrl);
+        reject(err);
+      };
+    });
+  }
+
+  for (let i=0; i<chunks.length; i++) {
+    await playChunk(i);
+  }
 }
 // ======= END Play TTS =======
 
