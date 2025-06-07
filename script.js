@@ -256,7 +256,7 @@ function renderChat() {
 
     chatWindow.appendChild(div);
 
-    // ====== Action row for assistant: Listen/Trash in new row below bubble ======
+    // ====== Action row for assistant: Listen/Download/Trash in new row below bubble ======
     if (msg.role === "assistant") {
       const actionRow = document.createElement('div');
       actionRow.className = "action-row";
@@ -278,6 +278,24 @@ function renderChat() {
         listenBtn.disabled = false;
       };
       actionRow.appendChild(listenBtn);
+
+      // ===== Download MP3 Button =====
+      const downloadBtn = document.createElement('button');
+      downloadBtn.textContent = "⬇️";
+      downloadBtn.title = "Download this message as MP3";
+      downloadBtn.className = "download-btn";
+      downloadBtn.onclick = async () => {
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = "…";
+        try {
+          await downloadTTS(msg.content, "English");
+        } catch (e) {
+          alert("Download failed: " + (e.message||e));
+        }
+        downloadBtn.textContent = "⬇️";
+        downloadBtn.disabled = false;
+      };
+      actionRow.appendChild(downloadBtn);
 
       // Delete button
       const delBtn = document.createElement('button');
@@ -322,6 +340,42 @@ function renderChat() {
     // End suggestions
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+// ======= NEW: Download TTS as concatenated MP3 file =======
+async function downloadTTS(text, language) {
+  const chunks = splitTextIntoChunks(text, 1000);
+  let audioBlobs = [];
+
+  try {
+    audioBlobs = await Promise.all(chunks.map(chunk =>
+      fetch("/.netlify/functions/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: chunk, language })
+      })
+      .then(resp => {
+        if (!resp.ok) throw new Error("TTS error: " + resp.statusText);
+        return resp.blob();
+      })
+    ));
+  } catch (e) {
+    alert("Could not fetch audio: " + (e.message||e));
+    return;
+  }
+
+  // Combine all chunks into one Blob
+  const fullBlob = new Blob(audioBlobs, { type: "audio/mpeg" });
+
+  // Download
+  const url = URL.createObjectURL(fullBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = "chat-audio.mp3";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 8000); // Clean up
 }
 
 // ======= Play TTS function: Queued, Prefetches all chunks and plays in sequence =======
