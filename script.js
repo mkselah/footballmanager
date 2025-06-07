@@ -261,22 +261,43 @@ function renderChat() {
       const actionRow = document.createElement('div');
       actionRow.className = "action-row";
 
-      // Listen Button
-      const listenBtn = document.createElement('button');
-      listenBtn.textContent = "🔊";
-      listenBtn.title = "Listen to this message (TTS)";
+      // === Listen Button loads and swaps in audio controls ===
+      let audioPlayer = null;
+      let listenBtn = document.createElement('button');
+      listenBtn.textContent = "▶️ Listen";
+      listenBtn.title = "Listen to this message";
       listenBtn.className = "listen-btn";
-      listenBtn.onclick = async () => {
+
+      listenBtn.onclick = async function() {
         listenBtn.disabled = true;
-        listenBtn.textContent = "…";
+        listenBtn.textContent = "Loading…";
         try {
-          await playTTS(msg.content, "English"); // Set language as needed
+          const resp = await fetch("/.netlify/functions/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: msg.content, language: "English" })
+          });
+          if (!resp.ok) throw new Error("Error fetching audio");
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          // Create actual audio player, swap out the button
+          audioPlayer = document.createElement('audio');
+          audioPlayer.controls = true;
+          audioPlayer.preload = "auto";
+          audioPlayer.src = url;
+          audioPlayer.style.verticalAlign = "middle";
+          //audioPlayer.style.width = "160px";
+          audioPlayer.title = "Listen to this message";
+          audioPlayer.setAttribute('controlsList', 'nodownload noplaybackrate novolume');
+          actionRow.replaceChild(audioPlayer, listenBtn);
+          audioPlayer.play();
         } catch (e) {
-          alert("Could not play audio: " + (e.message||e));
+          listenBtn.textContent = "▶️ Listen";
+          listenBtn.disabled = false;
+          alert("Could not fetch audio: " + (e.message||e));
         }
-        listenBtn.textContent = "🔊";
-        listenBtn.disabled = false;
       };
+
       actionRow.appendChild(listenBtn);
 
       // ===== Download MP3 Button =====

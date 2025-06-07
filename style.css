@@ -218,6 +218,15 @@ body {
   margin: 4px 0 2px 34px;
 }
 
+.action-row audio {
+  margin-right: 10px;
+  vertical-align: middle;
+  min-width: 60mm;
+  width: 100%;
+  max-width: calc(100vw - 48px);
+  display: inline-block;
+}
+
 /* Slight touch-ups for listen & trash so they are easy but minimal */
 .listen-btn, .msg-delete-btn {
   background: none;
