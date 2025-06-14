@@ -23,9 +23,8 @@ let messages = [];
 let activeTopicIdx = 0;
 let user = null;
 
-// To hold suggestions for last assistant message (index = message #)
-let lastSuggestions = {}; // { messageId: [sugg1,sugg2,sugg3] }
-let voiceChatMode = false;
+// New: To hold suggestions for last assistant message (index = message #)
+let lastSuggestions = {}; // { messageId: [suggestion1, suggestion2, suggestion3] }
 
 // --- Add to script.js: splits long text into ~1000 char chunks at ".", "!", "?"
 function splitTextIntoChunks(text, charLimit = 1000) {
@@ -485,24 +484,18 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US'; // optionally set default language here
-  recognition.continuous = true;
+  recognition.continuous = false;
   recognition.interimResults = true;
 
   micBtn.onclick = function(e) {
-  e.preventDefault();
-  if (voiceChatMode) {
-    voiceChatMode = false;
-    recognition.stop();
-    micBtn.textContent = "🎤";
-    micBtn.title = "Use voice input";
-    return;
-  }
-  voiceChatMode = true;
-  userInput.value = "";
-  micBtn.textContent = "🛑";
-  micBtn.title = "Stop talking";
-  recognition.start();
-};
+    e.preventDefault();
+    if (recognizing) {
+      recognition.stop();
+      return;
+    }
+    userInput.focus();
+    recognition.start();
+  };
 
   recognition.onstart = function() {
     recognizing = true;
@@ -516,54 +509,20 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     alert(`Voice input error: ${event.error || "Unknown error"}`);
   };
   recognition.onend = function() {
-  recognizing = false;
-  if (voiceChatMode) {
-    // Automatically restart to allow natural pause
-    setTimeout(() => recognition.start(), 400);
-  } else {
+    recognizing = false;
     micBtn.textContent = "🎤";
     micBtn.title = "Use voice input";
-  }
-};
-  recognition.onresult = async function(event) {
-  let finalTranscript = "";
-  for (let i = event.resultIndex; i < event.results.length; ++i) {
-    finalTranscript += event.results[i][0].transcript;
-  }
-  userInput.value = finalTranscript;
-  autoGrow(userInput);
-
-  // Only handle final result for chat
-  if (event.results[event.results.length - 1].isFinal && voiceChatMode) {
-    const text = finalTranscript.trim();
-    if (!text) return;
-    // Save user message and get LLM reply
-    await addMessage("user", text);
-    chatWindow.innerHTML += "<div class='system'>Thinking…</div>";
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-    const contextMessages = messages.concat([{ role: "user", content: text }]);
-    const resp = await fetch("/.netlify/functions/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: contextMessages }),
-    });
-    const json = await resp.json();
-    if (json.reply) {
-      await addMessage("assistant", json.reply);
-      await loadMessages();
-      const lastMsg = messages[messages.length-1];
-      lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
-      renderAll();
-      // Auto-play TTS!
-      await playTTS(json.reply, "English");
-    } else {
-      chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
+  };
+  recognition.onresult = function(event) {
+    let finalTranscript = "";
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      finalTranscript += event.results[i][0].transcript;
     }
-    // Resume recognition for next round: handled by onend auto-restart
-    userInput.value = "";
+    userInput.value = finalTranscript;
     autoGrow(userInput);
-  }
-};
+    // Optionally auto-submit on finished
+    if (event.results[0].isFinal) chatForm.requestSubmit();
+  };
 } else {
   micBtn.disabled = true;
   micBtn.title = 'Voice input not supported in your browser';
