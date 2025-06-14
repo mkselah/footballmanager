@@ -476,6 +476,58 @@ userInput.addEventListener("input", function() {
   autoGrow(this);
 });
 
+// ===== Voice/Mic input =====
+const micBtn = document.getElementById("micBtn");
+let recognizing = false;
+let recognition;
+if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US'; // optionally set default language here
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  micBtn.onclick = function(e) {
+    e.preventDefault();
+    if (recognizing) {
+      recognition.stop();
+      return;
+    }
+    userInput.focus();
+    recognition.start();
+  };
+
+  recognition.onstart = function() {
+    recognizing = true;
+    micBtn.textContent = "🛑";
+    micBtn.title = "Stop recording";
+  };
+  recognition.onerror = function(event) {
+    recognizing = false;
+    micBtn.textContent = "🎤";
+    micBtn.title = "Use voice input";
+    alert(`Voice input error: ${event.error || "Unknown error"}`);
+  };
+  recognition.onend = function() {
+    recognizing = false;
+    micBtn.textContent = "🎤";
+    micBtn.title = "Use voice input";
+  };
+  recognition.onresult = function(event) {
+    let finalTranscript = "";
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      finalTranscript += event.results[i][0].transcript;
+    }
+    userInput.value = finalTranscript;
+    autoGrow(userInput);
+    // Optionally auto-submit on finished
+    // if (event.results[0].isFinal) chatForm.requestSubmit();
+  };
+} else {
+  micBtn.disabled = true;
+  micBtn.title = 'Voice input not supported in your browser';
+}
+
 // ===== Chat Submit =====
 chatForm.onsubmit = async (e) => {
   e.preventDefault();
