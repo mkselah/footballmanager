@@ -521,7 +521,7 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     userInput.value = finalTranscript;
     autoGrow(userInput);
     // Optionally auto-submit on finished
-    // if (event.results[0].isFinal) chatForm.requestSubmit();
+    if (event.results[0].isFinal) chatForm.requestSubmit();
   };
 } else {
   micBtn.disabled = true;
