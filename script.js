@@ -549,6 +549,8 @@ userInput.addEventListener("input", function() {
 const micBtn = document.getElementById("micBtn");
 let recognizing = false;
 let recognition;
+let recognitionEndTimer = null; // <-- for end-delay
+
 if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
@@ -559,10 +561,12 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   micBtn.onclick = function(e) {
     e.preventDefault();
     if (recognizing) {
+      if(recognitionEndTimer) { clearTimeout(recognitionEndTimer); recognitionEndTimer = null; }
       recognition.stop();
       return;
     }
     userInput.focus();
+    if(recognitionEndTimer) { clearTimeout(recognitionEndTimer); recognitionEndTimer = null; }
     recognition.start();
   };
 
@@ -576,21 +580,29 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     micBtn.textContent = "🎤";
     micBtn.title = "Use voice input";
     alert(`Voice input error: ${event.error || "Unknown error"}`);
+    if(recognitionEndTimer) { clearTimeout(recognitionEndTimer); recognitionEndTimer = null; }
   };
   recognition.onend = function() {
-    recognizing = false;
-    micBtn.textContent = "🎤";
-    micBtn.title = "Use voice input";
+    // Instead of immediately setting recognizing=false, we delay for 2s.
+    if(recognitionEndTimer) { clearTimeout(recognitionEndTimer); }
+    recognitionEndTimer = setTimeout(() => {
+      recognizing = false;
+      micBtn.textContent = "🎤";
+      micBtn.title = "Use voice input";
+      recognitionEndTimer = null;
+      // After 2s, if there's anything in input and not already submitted, auto-submit
+      if(userInput.value.trim()) chatForm.requestSubmit();
+    }, 2000);
   };
   recognition.onresult = function(event) {
+    if(recognitionEndTimer) { clearTimeout(recognitionEndTimer); recognitionEndTimer = null; }
     let finalTranscript = "";
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       finalTranscript += event.results[i][0].transcript;
     }
     userInput.value = finalTranscript;
     autoGrow(userInput);
-    // Optionally auto-submit on finished
-    if (event.results[0].isFinal) chatForm.requestSubmit();
+    // Do NOT auto-submit yet. Wait for 2s after onend instead.
   };
 } else {
   micBtn.disabled = true;
