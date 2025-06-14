@@ -26,6 +26,14 @@ let user = null;
 // New: To hold suggestions for last assistant message (index = message #)
 let lastSuggestions = {}; // { messageId: [suggestion1, suggestion2, suggestion3] }
 
+// ====== TTS State =======
+let ttsState = {
+  stopRequested: false,
+  audios: [],
+  stopBtn: null, // The stop button element
+};
+// === /End TTS state ===
+
 // --- Add to script.js: splits long text into ~1000 char chunks at ".", "!", "?"
 function splitTextIntoChunks(text, charLimit = 1000) {
   if (text.length <= charLimit) return [text];
@@ -269,13 +277,16 @@ function renderChat() {
       listenBtn.onclick = async () => {
         listenBtn.disabled = true;
         listenBtn.textContent = "…";
+        // === CHANGES HERE: Remove any previous stop button
+        removeStopBtn();
         try {
-          await playTTS(msg.content, "English"); // Set language as needed
+          await playTTSwithStop(msg.content, "English", actionRow, listenBtn);
         } catch (e) {
           alert("Could not play audio: " + (e.message||e));
         }
         listenBtn.textContent = "🔊";
         listenBtn.disabled = false;
+        removeStopBtn();
       };
       actionRow.appendChild(listenBtn);
 
@@ -342,7 +353,7 @@ function renderChat() {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// ======= NEW: Download TTS as concatenated MP3 file =======
+// ======= Download TTS as concatenated MP3 file =======
 async function downloadTTS(text, language) {
   const chunks = splitTextIntoChunks(text, 1000);
   let audioBlobs = [];
@@ -379,11 +390,31 @@ async function downloadTTS(text, language) {
 }
 
 // ======= Play TTS function: Queued, Prefetches all chunks and plays in sequence =======
-async function playTTS(text, language) {
-  const chunks = splitTextIntoChunks(text, 1000); // ~1 min per chunk
-  let audioBlobs = [];
+async function playTTSwithStop(text, language, containerEl, listenBtn) {
+  const chunks = splitTextIntoChunks(text, 1000);
+  let audioBlobs = []; // If last playback was still there, try to stop it
+  stopTTSPlayback();
 
-  // 1. Fetch all audio blobs in parallel, show spinner/disable UI if needed
+  ttsState.stopRequested = false;
+  ttsState.audios = [];
+
+  // Create a Stop button and show in the container next to Listen
+  let stopBtn = document.createElement('button');
+  stopBtn.textContent = "⏹️ Stop";
+  stopBtn.title = "Stop reading aloud";
+  stopBtn.style.fontSize = "1em";
+  stopBtn.style.background = "#f5b3b3";
+  stopBtn.style.borderRadius = "6px";
+  stopBtn.style.border = "none";
+  stopBtn.style.marginLeft = "10px";
+  stopBtn.style.padding = "0.2em 1.1em";
+  stopBtn.style.cursor = "pointer";
+  stopBtn.onclick = stopTTSPlayback;
+  // Remove any old stop button
+  removeStopBtn();
+  containerEl.appendChild(stopBtn);
+  ttsState.stopBtn = stopBtn;
+
   try {
     audioBlobs = await Promise.all(chunks.map(chunk =>
       fetch("/.netlify/functions/tts", {
@@ -397,28 +428,66 @@ async function playTTS(text, language) {
       })
     ));
   } catch (e) {
-    alert("Could not fetch audio: " + (e.message||e));
-    return;
+    removeStopBtn();
+    throw e;
   }
 
-  // 2. Create audio URLs
   const audioUrls = audioBlobs.map(blob => URL.createObjectURL(blob));
-
-  // 3. Play each audio in sequence, removing sources to avoid leaks
-  for (let i = 0; i < audioUrls.length; i++) {
-    await new Promise((resolve, reject) => {
-      const audio = new Audio(audioUrls[i]);
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrls[i]);
-        resolve();
-      };
-      audio.onerror = (err) => {
-        URL.revokeObjectURL(audioUrls[i]);
-        reject(err);
-      };
-      audio.play();
-    });
+  try {
+    for (let i = 0; i < audioUrls.length; i++) {
+      if (ttsState.stopRequested) break;
+      await new Promise((resolve, reject) => {
+        const audio = new Audio(audioUrls[i]);
+        ttsState.audios.push(audio);
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrls[i]);
+          resolve();
+        };
+        audio.onerror = (err) => {
+          URL.revokeObjectURL(audioUrls[i]);
+          reject(err);
+        };
+        audio.play();
+        // If stop requested while playing, pause/abort immediately
+        let interval = setInterval(() => {
+          if (ttsState.stopRequested) {
+            audio.pause();
+            audio.currentTime = 0;
+            clearInterval(interval);
+            URL.revokeObjectURL(audioUrls[i]);
+            resolve();
+          }
+        }, 160);
+      });
+    }
+  } finally {
+    removeStopBtn();
+    ttsState.stopRequested = false;
+    for (const url of audioUrls) URL.revokeObjectURL(url);
+    ttsState.audios = [];
   }
+}
+
+// Helper: Stop playback immediately
+function stopTTSPlayback() {
+  ttsState.stopRequested = true;
+  // Stop all in-progress
+  for (const audio of ttsState.audios) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch(e){}
+  }
+  ttsState.audios = [];
+  removeStopBtn();
+}
+
+// Remove the stop button (if present)
+function removeStopBtn() {
+  if (ttsState.stopBtn && ttsState.stopBtn.parentNode) {
+    ttsState.stopBtn.parentNode.removeChild(ttsState.stopBtn);
+  }
+  ttsState.stopBtn = null;
 }
 // ======= END Play TTS =======
 
