@@ -549,150 +549,48 @@ userInput.addEventListener("input", function() {
 const micBtn = document.getElementById("micBtn");
 let recognizing = false;
 let recognition;
-let micControls = null;    // Holds the floating send/cancel controls
-let micTimeout = null;     // Timer to end recognition after 2s of silence
-let micFinalTranscript = ""; // Store transcript
-
 if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
-  recognition.lang = 'en-US';
+  recognition.lang = 'en-US'; // optionally set default language here
   recognition.continuous = false;
   recognition.interimResults = true;
 
   micBtn.onclick = function(e) {
     e.preventDefault();
     if (recognizing) {
-      // Already recognizing: clicking mic again = cancel (stop)
-      stopMicRecognition(true);
+      recognition.stop();
       return;
     }
     userInput.focus();
-    micFinalTranscript = "";
     recognition.start();
-    showMicControls();
   };
-
-  function showMicControls() {
-    removeMicControls();
-    micControls = document.createElement("div");
-    micControls.style.position = "fixed";
-    micControls.style.left = "50%";
-    micControls.style.bottom = "80px";
-    micControls.style.transform = "translateX(-50%)";
-    micControls.style.zIndex = 10001;
-    micControls.style.background = "#fff";
-    micControls.style.border = "1.5px solid #ccc";
-    micControls.style.boxShadow = "0 2px 18px rgba(60,60,80,0.17)";
-    micControls.style.padding = "12px 24px";
-    micControls.style.borderRadius = "14px";
-    micControls.style.display = "flex";
-    micControls.style.gap = "12px";
-    micControls.style.alignItems = "center";
-
-    // Status text
-    let status = document.createElement("span");
-    status.textContent = "Listening..."; // Can update this if needed
-    micControls.appendChild(status);
-
-    // Send btn (force send now)
-    let sendBtn = document.createElement("button");
-    sendBtn.textContent = "Send";
-    sendBtn.onclick = function() {
-      stopMicRecognition();
-      if (micFinalTranscript.trim()) {
-        userInput.value = micFinalTranscript.trim();
-        autoGrow(userInput);
-        chatForm.requestSubmit();
-      }
-      removeMicControls();
-    };
-    micControls.appendChild(sendBtn);
-
-    // Cancel btn
-    let cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.onclick = function() {
-      stopMicRecognition(true);
-      removeMicControls();
-      micFinalTranscript = "";
-    };
-    micControls.appendChild(cancelBtn);
-
-    document.body.appendChild(micControls);
-  }
-  function removeMicControls() {
-    if (micControls && micControls.parentNode) {
-      micControls.parentNode.removeChild(micControls);
-    }
-    micControls = null;
-  }
-  function stopMicRecognition(isCancel=false) {
-    if (recognizing) recognition.stop();
-    recognizing = false;
-    micBtn.textContent = "🎤";
-    micBtn.title = "Use voice input";
-    clearTimeout(micTimeout);
-    if (!isCancel) removeMicControls();
-  }
-  function restartMicTimeout() {
-    clearTimeout(micTimeout);
-    micTimeout = setTimeout(()=>{
-      stopMicRecognition();
-      if (micFinalTranscript.trim()) {
-        userInput.value = micFinalTranscript.trim();
-        autoGrow(userInput);
-        chatForm.requestSubmit();
-      }
-      removeMicControls();
-    }, 2000);
-  }
 
   recognition.onstart = function() {
     recognizing = true;
     micBtn.textContent = "🛑";
     micBtn.title = "Stop recording";
-    restartMicTimeout();
   };
   recognition.onerror = function(event) {
     recognizing = false;
     micBtn.textContent = "🎤";
     micBtn.title = "Use voice input";
-    removeMicControls();
     alert(`Voice input error: ${event.error || "Unknown error"}`);
   };
   recognition.onend = function() {
     recognizing = false;
     micBtn.textContent = "🎤";
     micBtn.title = "Use voice input";
-    clearTimeout(micTimeout);
-    // Don't auto-send on "onend"
-    removeMicControls();
   };
   recognition.onresult = function(event) {
-    let interimTranscript = "";
+    let finalTranscript = "";
     for (let i = event.resultIndex; i < event.results.length; ++i) {
-      let t = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        micFinalTranscript += t;
-      } else {
-        interimTranscript += t;
-      }
+      finalTranscript += event.results[i][0].transcript;
     }
-    // Show transcript in userInput live
-    userInput.value = (micFinalTranscript + ' ' + interimTranscript).trim();
+    userInput.value = finalTranscript;
     autoGrow(userInput);
-    restartMicTimeout();
-
-    // Keyword-based force send
-    let full = userInput.value.toLowerCase();
-    if (full.includes("send chat") || full.includes("send message")) {
-      stopMicRecognition();
-      userInput.value = micFinalTranscript.trim();
-      autoGrow(userInput);
-      chatForm.requestSubmit();
-      removeMicControls();
-    }
+    // Optionally auto-submit on finished
+    if (event.results[0].isFinal) chatForm.requestSubmit();
   };
 } else {
   micBtn.disabled = true;
