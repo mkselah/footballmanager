@@ -284,3 +284,16 @@ body {
   background: #f0f4ff;
   opacity: 1;
 }
+
+@media (max-width: 600px) {
+  #chatForm {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  #userInput {
+    min-width: 80vw;
+  }
+  #micBtn, #showSheetBtn {
+    margin-top: 2px;
+  }
+}
