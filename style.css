@@ -153,6 +153,21 @@ body {
   color: white;
 }
 
+#showSheetBtn {
+  background: none;
+  border: none;
+  font-size: 1.13em;
+  padding: 0.1em 0.7em;
+  border-radius: 6px;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.12s;
+}
+#showSheetBtn:hover {
+  background: #e0e4fc;
+  opacity: 1;
+}
+
 @media (max-width: 600px) {
   #app, .main-wrapper { flex-direction: column; }
   #topbar { flex-wrap: wrap; font-size: 97%; padding: 0.8em 0.4em; }
