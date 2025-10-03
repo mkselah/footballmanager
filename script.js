@@ -642,6 +642,28 @@ chatForm.onsubmit = async (e) => {
   }
 };
 
+const showSheetBtn = document.getElementById("showSheetBtn");
+const sheetDataDiv = document.getElementById("sheetData");
+
+showSheetBtn.onclick = async function() {
+  sheetDataDiv.innerHTML = "Loading…";
+  sheetDataDiv.style.display = "";
+  const resp = await fetch("/.netlify/functions/sheet");
+  const rows = await resp.json();
+  if (!rows || rows.error) {
+    sheetDataDiv.innerHTML = "Error loading sheet: " + (rows.error || "Unknown");
+    return;
+  }
+  // Display as table
+  let html = "<table border=1 style='border-collapse:collapse;width:100%'>";
+  html += "<tr>" + Object.keys(rows[0]||{}).map(h=>`<th>${h}</th>`).join("") + "</tr>";
+  for (const row of rows) {
+    html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
+  }
+  html += "</table>";
+  sheetDataDiv.innerHTML = html;
+};
+
 // ==== INIT ===
 window.onload = async () => {
   let { data: { user: u }} = await supabase.auth.getUser();

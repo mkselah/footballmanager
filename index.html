@@ -37,6 +37,8 @@
     <main class="chat-section">
       <div id="chatWindow"></div>
       <form id="chatForm">
+        <button id="showSheetBtn" type="button">Show Google Sheet Data</button>
+        <div id="sheetData" style="display:none; max-height:300px; overflow:auto; background:#f8faff; border:1px solid #bed8ff; margin:8px 0; padding:7px; border-radius:7px;"></div>
         <textarea id="userInput" autocomplete="off" placeholder="Type your message..." rows="1"></textarea>
         <button type="button" id="micBtn" title="Use voice input">🎤</button>
         <button type="submit">Send</button>
