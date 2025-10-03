@@ -654,23 +654,42 @@ showSheetBtn.onclick = async function() {
     sheetDataDiv.innerHTML = "Error loading sheet: " + (rows.error || "Unknown");
     return;
   }
-  // Display as table
+  // Display as table (visible html for user)
   let html = "<table border=1 style='border-collapse:collapse;width:100%'>";
-if (rows.length && Object.keys(rows[0]).length) {
+  if (rows.length && Object.keys(rows[0]).length) {
     html += "<tr>" + Object.keys(rows[0]).map(h=>`<th>${h}</th>`).join("") + "</tr>";
     for (const row of rows) {
-        html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
+      html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
     }
-} else {
+  } else {
     html += "<tr><td>No data in sheet</td></tr>";
-}
-html += "</table>";
-sheetDataDiv.innerHTML = html;
-  for (const row of rows) {
-    html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
   }
   html += "</table>";
   sheetDataDiv.innerHTML = html;
+
+  // === NEW: Insert sheet data as Markdown into #userInput
+  // Compose as Markdown table (for the prompt)
+  let mdTable = '';
+  if (rows.length && Object.keys(rows[0]).length) {
+    const headers = Object.keys(rows[0]);
+    const mdHeader = "| " + headers.join(" | ") + " |";
+    const mdSep = "| " + headers.map(()=> "---").join(" | ") + " |";
+    const mdRows = rows.map(row =>
+      "| " + headers.map(h => row[h]).join(" | ") + " |"
+    );
+    mdTable = [mdHeader, mdSep, ...mdRows].join("\n");
+  } else {
+    mdTable = "No data in sheet.";
+  }
+
+  // Insert table into textarea, or append if there's existing text
+  if (userInput.value.trim()) {
+    userInput.value = userInput.value.trim() + "\n\n" + mdTable + "\n\n"; // Append
+  } else {
+    userInput.value = mdTable + "\n\n"; // Set
+  }
+  autoGrow(userInput);
+  userInput.focus();
 };
 
 // ==== INIT ===
