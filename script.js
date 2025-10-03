@@ -668,31 +668,6 @@ showSheetBtn.onclick = async function() {
   userInput.focus();
 };
 
-  // === NEW: Insert sheet data as Markdown into #userInput
-  // Compose as Markdown table (for the prompt)
-  let mdTable = '';
-  if (rows.length && Object.keys(rows[0]).length) {
-    const headers = Object.keys(rows[0]);
-    const mdHeader = "| " + headers.join(" | ") + " |";
-    const mdSep = "| " + headers.map(()=> "---").join(" | ") + " |";
-    const mdRows = rows.map(row =>
-      "| " + headers.map(h => row[h]).join(" | ") + " |"
-    );
-    mdTable = [mdHeader, mdSep, ...mdRows].join("\n");
-  } else {
-    mdTable = "No data in sheet.";
-  }
-
-  // Insert table into textarea, or append if there's existing text
-  if (userInput.value.trim()) {
-    userInput.value = userInput.value.trim() + "\n\n" + mdTable + "\n\n"; // Append
-  } else {
-    userInput.value = mdTable + "\n\n"; // Set
-  }
-  autoGrow(userInput);
-  userInput.focus();
-};
-
 // ==== INIT ===
 window.onload = async () => {
   let { data: { user: u }} = await supabase.auth.getUser();
