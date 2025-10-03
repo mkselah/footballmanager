@@ -656,7 +656,16 @@ showSheetBtn.onclick = async function() {
   }
   // Display as table
   let html = "<table border=1 style='border-collapse:collapse;width:100%'>";
-  html += "<tr>" + Object.keys(rows[0]||{}).map(h=>`<th>${h}</th>`).join("") + "</tr>";
+if (rows.length && Object.keys(rows[0]).length) {
+    html += "<tr>" + Object.keys(rows[0]).map(h=>`<th>${h}</th>`).join("") + "</tr>";
+    for (const row of rows) {
+        html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
+    }
+} else {
+    html += "<tr><td>No data in sheet</td></tr>";
+}
+html += "</table>";
+sheetDataDiv.innerHTML = html;
   for (const row of rows) {
     html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
   }

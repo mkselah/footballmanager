@@ -1,12 +1,13 @@
 export async function handler(event, context) {
   // REPLACE with your sheet ID:
-  const SHEET_ID = 'your_sheet_id_here';
-  const CSV_URL = `https://docs.google.com/spreadsheets/d/1UInMmMBWA5zvcy4vwSf2XwtxpBqXASiNDkZ-S6Bv_Cg/export?format=csv`;
+  const SHEET_ID = '1UInMmMBWA5zvcy4vwSf2XwtxpBqXASiNDkZ-S6Bv_Cg';
+  const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
 
   try {
     const resp = await fetch(CSV_URL);
     if (!resp.ok) throw new Error(`Fetch error: ${resp.status}`);
     const csv = await resp.text();
+    console.log("CSV fetched:", csv);
 
     // Simple CSV to array parsing (no quoted commas supported)
     const lines = csv.trim().split("\n");
