@@ -646,26 +646,27 @@ const showSheetBtn = document.getElementById("showSheetBtn");
 const sheetDataDiv = document.getElementById("sheetData");
 
 showSheetBtn.onclick = async function() {
-  sheetDataDiv.innerHTML = "Loading…";
-  sheetDataDiv.style.display = "";
   const resp = await fetch("/.netlify/functions/sheet");
   const rows = await resp.json();
   if (!rows || rows.error) {
-    sheetDataDiv.innerHTML = "Error loading sheet: " + (rows.error || "Unknown");
+    alert("Error loading sheet: " + (rows.error || "Unknown"));
     return;
   }
-  // Display as table (visible html for user)
-  let html = "<table border=1 style='border-collapse:collapse;width:100%'>";
-  if (rows.length && Object.keys(rows[0]).length) {
-    html += "<tr>" + Object.keys(rows[0]).map(h=>`<th>${h}</th>`).join("") + "</tr>";
-    for (const row of rows) {
-      html += "<tr>" + Object.values(row).map(val=>`<td>${val}</td>`).join("") + "</tr>";
-    }
-  } else {
-    html += "<tr><td>No data in sheet</td></tr>";
+  if (!rows.length) {
+    alert("No data in sheet.");
+    return;
   }
-  html += "</table>";
-  sheetDataDiv.innerHTML = html;
+  // Compose as text (tab-separated, one row per line)
+  const headers = Object.keys(rows[0]);
+  let text = headers.join("\t") + "\n";
+  for (const row of rows) {
+    text += headers.map(h => row[h]).join("\t") + "\n";
+  }
+  // Insert into userInput area (keeping any previous value and putting caret at end)
+  userInput.value = text + "\n" + userInput.value;
+  autoGrow(userInput);
+  userInput.focus();
+};
 
   // === NEW: Insert sheet data as Markdown into #userInput
   // Compose as Markdown table (for the prompt)
