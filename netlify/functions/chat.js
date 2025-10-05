@@ -8,7 +8,6 @@ Start your answer directly, no introductions such as "Certainly", "Sure", or sim
 Do not mention you are an AI or language model.
 Focus on giving helpful, clear, and concise information.
 Unless the user asks explicitly, give answers with 600-700 words.
-Make the answers readable but also speech friendly, as if it was to be read aloud and the audience is the listener.
 Do not include any boilerplate text or disclaimers.
 Do not include any system prompts or instructions in your responses.
 Do not include any information about your capabilities, limitations, or how you work.
@@ -64,9 +63,9 @@ export async function handler(event) {
 
     // 1. Get assistant reply
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-5-nano",
       messages: contextMsgs,
-      temperature: 0.7,
+      temperature: 0.6,
       max_tokens: 3000,
     });
     const reply = completion.choices[0].message.content;
