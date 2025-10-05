@@ -66,7 +66,7 @@ export async function handler(event) {
       model: "gpt-5-nano",
       messages: contextMsgs,
       temperature: 0.6,
-      max_tokens: 3000,
+      max_completion_tokens: 3000,
     });
     const reply = completion.choices[0].message.content;
 
