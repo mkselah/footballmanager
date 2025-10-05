@@ -47,13 +47,13 @@ async function getSuggestions(messages) {
 }
 
 export async function handler(event) {
+  const startTime = Date.now();
   try {
     const { messages } = JSON.parse(event.body);
     if (!Array.isArray(messages)) throw new Error("No messages");
 
     // Insert the anti-boilerplate system prompt at the start (after any topic system or before user)
     let contextMsgs = messages.slice();
-    // Find the index to insert after first system message, or else just at the start
     let systemIdx = contextMsgs.findIndex(m => m.role === "system");
     if (systemIdx >= 0) {
       contextMsgs.splice(systemIdx + 1, 0, { role: "system", content: ANTI_BOILERPLATE });
@@ -62,31 +62,53 @@ export async function handler(event) {
     }
 
     // 1. Get assistant reply
+    const llmStart = Date.now();
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1",
       messages: contextMsgs,
-      temperature: 0.6,
-      max_tokens: 8000,
+      temperature: 0.7,
+      max_tokens: 3000,
     });
+    const llmEnd = Date.now();
+    const llmDuration = llmEnd - llmStart;
+
     const reply = completion.choices[0].message.content;
+    const usage = completion.usage || {};
 
     // 2. Get suggestions (include the new assistant reply in context)
+    const suggStart = Date.now();
     const allMessages = [...messages, { role: "assistant", content: reply }];
     const suggestions = await getSuggestions(allMessages);
+    const suggEnd = Date.now();
+    const suggDuration = suggEnd - suggStart;
+
+    const totalDuration = Date.now() - startTime;
+
+    // For troubleshooting: log to server log
+    console.log("LLM duration(ms):", llmDuration, "tokens:", usage);
+    console.log("Suggest duration(ms):", suggDuration, "total:", totalDuration);
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         reply,
-        suggestions
+        suggestions,
+        usage, // {prompt_tokens, completion_tokens, total_tokens}
+        timing: {
+          llmDuration,   // ms GPT call
+          suggDuration,  // ms suggestions
+          totalDuration, // total ms
+        }
       }),
     };
   } catch (err) {
+    console.error("chat.js ERROR:", err.stack || err);
+    // Optionally log event.body (omitted for privacy)
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message || "Unknown error" }),
+      body: JSON.stringify({ error: err.message || "Unknown error", stack: err.stack }),
     };
   }
 }

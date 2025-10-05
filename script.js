@@ -513,17 +513,31 @@ async function sendSuggestion(idx, suggArr, assistantMsg, assistantMsgIdx) {
     body: JSON.stringify({ messages: contextMessages }),
   });
   const json = await resp.json();
-  if (json.reply) {
-    // Add assistant message to DB
-    await addMessage("assistant", json.reply);
-    // Store new suggestions for that message
-    // We'll use the last message's id (will be loaded via addMessage)
-    await loadMessages(); // will update messages with new assistant
-    const lastMsg = messages[messages.length - 1];
-    lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
-    renderAll();
-  } else {
-    chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
+if (json.reply) {
+  await addMessage("assistant", json.reply);
+  await loadMessages();
+  const lastMsg = messages[messages.length-1];
+  lastSuggestions[lastMsg.id] = json.suggestions || ["", "", ""];
+  renderAll();
+  // Show usage/timing for debugging, below chat (optionally in console too)
+  if (json.usage || json.timing) {
+    let debugLine = "<div class='system' style='font-size:0.89em;color:#937;width:98%;margin:2px auto 8px auto'>";
+    if (json.usage) {
+      debugLine += `Tokens: prompt ${json.usage.prompt_tokens||"-"}/ completion ${json.usage.completion_tokens||"-"}, total ${json.usage.total_tokens||"-"}. `;
+    }
+    if (json.timing) {
+      debugLine += `LLM: ${json.timing.llmDuration}ms, suggestion: ${json.timing.suggDuration}ms, total: ${json.timing.totalDuration}ms`;
+    }
+    debugLine += "</div>";
+    chatWindow.innerHTML += debugLine;
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+} else {
+  chatWindow.innerHTML += "<div class='system'>Error: "+(json.error||"Unknown")+"</div>";
+  // Optionally log stack trace for debugging
+  if (json.stack) {
+    chatWindow.innerHTML += `<div class='system' style='color:#c33;font-size:0.91em'>Stack: ${json.stack}</div>`;
+    chatWindow.scrollTop = chatWindow.scrollHeight;
   }
 }
 
