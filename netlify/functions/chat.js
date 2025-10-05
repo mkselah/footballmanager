@@ -63,10 +63,10 @@ export async function handler(event) {
 
     // 1. Get assistant reply
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-nano",
+      model: "gpt-4.1",
       messages: contextMsgs,
-      temperature: 1,
-      max_completion_tokens: 3000,
+      temperature: 0.6,
+      max_tokens: 8000,
     });
     const reply = completion.choices[0].message.content;
 
